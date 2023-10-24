@@ -175,9 +175,6 @@ fn evaluate_board(board: Vec<Vec<char>>, player: char) -> i32 {
             }
         }
     }
-    if (oscore - xscore) == 0 {
-        println!("{},{}",oscore,xscore);
-    }
     if player == 'X' {
         return xscore - oscore;
     } else {
