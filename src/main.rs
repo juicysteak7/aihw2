@@ -57,7 +57,7 @@ fn main() {
     // let result = recurse_board(game_board.clone(), player, previous_player,4);
     // println!("{} {}",player, result);
     let mut game_board = vec![vec!['.'; 4]; 4];
-    let mut transpoition_table: HashMap<BoardState,i32> = HashMap::new();
+    //let mut transpoition_table: HashMap<BoardState,i32> = HashMap::new();
 
     // Create a mutable string to store the user's input
     let mut player_result = String::new();
@@ -158,12 +158,12 @@ fn main() {
         }
 
         if difficulty <= 4 {
-            game_board = take_step(game_board.clone(), player, previous_player, difficulty + iterative_depth, &mut transpoition_table);
+            game_board = take_step(game_board.clone(), player, previous_player, 2 + iterative_depth);
         } else if difficulty < 8 {
-            game_board = take_step(game_board.clone(), player, previous_player, difficulty - 4 + iterative_depth, &mut transpoition_table);
+            game_board = take_step(game_board.clone(), player, previous_player, 3  + iterative_depth);
             iterative_depth += 1;
         } else {
-            game_board = take_step(game_board.clone(), player, previous_player, difficulty + 10 + iterative_depth, &mut transpoition_table);
+            game_board = take_step(game_board.clone(), player, previous_player, 4 + iterative_depth);
             iterative_depth += 2;
         }
 
@@ -178,48 +178,40 @@ fn main() {
     }
 }
 
-fn order_moves(board: Vec<Vec<char>>, player: char) -> Vec<Vec<Vec<char>>>{
+fn order_moves(board: Vec<Vec<char>>, player: char, previous_player: char) -> Vec<Vec<Vec<char>>>{
     let mut ord_moves:Vec<Vec<Vec<char>>> = Vec::new();
+    let mut new_prev = previous_player;
+    if new_prev == 'X' {
+        new_prev = 'O';
+    } else {
+        new_prev = 'X';
+    }
 
-    for r in 1..3 {
-        for c in 1..3 {
+    for r in 0..4 {
+        for c in 0..4 {
             if board[r][c] == '.' {
                 let mut new_board = board.clone();
-                new_board[r][c] = player;
+                new_board[r][c] = previous_player;
                 ord_moves.push(new_board);
             }
         }
     }
 
-    for i in 0..4 {
-        if board[0][i] == '.' {
-            let mut new_board = board.clone();
-            new_board[0][i] = player;
-            ord_moves.push(new_board);
+    // Sort the moves based on the heuristic evaluation
+    ord_moves.sort_by(|a, b| {
+        let score_a = shallow_recurse_board(a.clone(), player, new_prev, 1);
+        let score_b = shallow_recurse_board(b.clone(), player, new_prev, 1);
+        score_b.cmp(&score_a) // Reverse order to sort in descending order
+    });
 
-        }
-        if board[3][i] == '.' {
-            let mut new_board = board.clone();
-            new_board[3][i] = player;
-            ord_moves.push(new_board);           
-        }
-        if board[i][0] == '.' {
-            let mut new_board = board.clone();
-            new_board[i][0] = player;
-            ord_moves.push(new_board);
-        }
-        if board[i][3] == '.' {
-            let mut new_board = board.clone();
-            new_board[i][3] = player;
-            ord_moves.push(new_board);
-        }
-    }
 
     ord_moves
 }
 
+
+
 // Recurse board using negamax of depth+1, then evaluate next move.
-fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, transposition_table:&mut HashMap<BoardState,i32>) -> Vec<Vec<char>> {
+fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize/*, transposition_table:&mut HashMap<BoardState,i32>*/) -> Vec<Vec<char>> {
     //let new_board: Vec<Vec<char>> = Vec::new();
     let mut result:i32;
     let mut result1:i32 = i32::MIN;
@@ -233,9 +225,9 @@ fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: 
 
                 // Alpha = lower bound, Beta = Upper bound
                 if previous_player == 'X' {
-                    result = recurse_board(new_board.clone(), player, 'O', depth, 0, 2, transposition_table);
+                    result = recurse_board(new_board.clone(), player, 'O', depth, 0, 4);
                 } else {
-                    result = recurse_board(new_board.clone(), player, 'X', depth, i32::MIN+1, i32::MAX, transposition_table);
+                    result = recurse_board(new_board.clone(), player, 'X', depth, i32::MIN+1, i32::MAX);
                 }
                 // println!("{}  {}{}",result,r,c);
                 if result > result1 {
@@ -245,6 +237,7 @@ fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: 
             }
         }
     }
+    println!("{}",result1);
     r_board
 }
 
@@ -259,16 +252,48 @@ fn is_complete(board: Vec<Vec<char>>) -> bool {
     true
 }
 
-fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, mut beta:i32, transposition_table:&mut HashMap<BoardState,i32>) -> i32 {
+fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize) -> i32 {
     // Alpha beta
     let mut result2 = i32::MIN+1;
-    //let mut finished = true;
+    let mut finished = true;
     let mut result1 = 0;
 
-    for mov in order_moves(board.clone(), player) {
-        if let Some(score) = transposition_table.get(&BoardState(mov.clone())) {
-            result1= *score;
-        } else {
+    if depth != 0 {
+        for r in 0..4 {
+            for c in 0..4 {
+                if board[r][c] == '.' {
+                    finished = false;
+                    let mut new_board = board.clone();
+                    new_board[r][c] = previous_player;
+
+                    result1 = shallow_recurse_board(
+                        new_board.clone(),
+                        player,
+                        if previous_player == 'X' { 'O' } else { 'X' },
+                        depth - 1,
+                    );
+
+                    result2 = result2.max(result1);
+                }
+            }
+        }
+    }
+    if finished || depth == 0 {
+        return evaluate_board(board, player);
+    }
+
+    result2
+}
+
+fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, mut beta:i32/*, transposition_table:&mut HashMap<BoardState,i32>*/) -> i32 {
+    // Alpha beta
+    let mut result2 = i32::MIN+1;
+    let mut finished = true;
+    let mut result1 = 0;
+
+    if depth != 0 {
+        for mov in order_moves(board.clone(), player, previous_player) {
+            finished = false;
             result1 = -recurse_board(
                 mov.clone(),
                 player,
@@ -276,22 +301,20 @@ fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, dep
                 depth - 1,
                 -beta,
                 -alpha,
-                transposition_table
             );
-            //transposition_table.insert(BoardState(new_board.clone()),result1);
-        }
 
-        result2 = result2.max(result1);
-        alpha = alpha.min(result1);
-        beta = beta.max(result1);
+            result2 = result2.max(result1);
+            alpha = alpha.max(result1);
 
-        if alpha >= beta {
-            // println!("pruned: {} {}", alpha, beta);
-            break;
+            if alpha >= beta {
+                // println!("pruned: {} {}", alpha, beta);
+                break;
+            }
         }
     }
-    if depth == 0 {
-        return evaluate_board(board, player);
+
+    if depth == 0 || finished == true {
+        return evaluate_board(board,player);
     }
     result2
 
@@ -361,33 +384,6 @@ fn evaluate_board(board: Vec<Vec<char>>, player: char) -> i32 {
     let mut oscore:i32 = 0;
     for r in 0..4 {
         for c in 0..4 {
-            // Check diagonals
-            // if r > 2 && c <= 2 {
-            //     let mut diagonal1 = Vec::new();
-            //     for i in 0..3 {
-            //         if c + i < 4 {
-            //            diagonal1.push(board[r - i][c + i]);
-            //         }
-            //     }
-            //     if diagonal1.iter().all(|&c| c == 'X') {
-            //         xscore += 3;
-            //     } else if diagonal1.iter().all(|&c| c == 'O') {
-            //         oscore += 3;
-            //     }
-            // }
-
-            // if r > 2 && c >= 2 {
-            //     let mut diagonal2 = Vec::new();
-            //     for i in 0..3 {
-            //         diagonal2.push(board[r - i][c - i]);
-            //     }
-            //     if diagonal2.iter().all(|&c| c == 'X') {
-            //         xscore += 3;
-            //     } else if diagonal2.iter().all(|&c| c == 'O') {
-            //         oscore += 3;
-            //     }
-            // }
-
             // Check the diagonal from the top-left corner to the bottom-right corner
             if r + 3 < 4 && c + 3 < 4 {
                 let diagonal1: Vec<char> = (0..4).map(|i| board[r + i][c + i]).collect();
