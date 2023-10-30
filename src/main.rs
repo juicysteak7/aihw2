@@ -1,6 +1,10 @@
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::collections::HashMap; 
 use std::env;
+
+#[derive(Eq,Hash,PartialEq,Ord,PartialOrd)]
+struct BoardState(Vec<Vec<char>>);
 
 fn main() {
     // let args: Vec<String> = env::args().collect();
@@ -52,10 +56,54 @@ fn main() {
     // // print_board(game_board.clone());
     // let result = recurse_board(game_board.clone(), player, previous_player,4);
     // println!("{} {}",player, result);
-
     let mut game_board = vec![vec!['.'; 4]; 4];
-    let previous_player = 'X';
-    let player = 'O';
+    let mut transpoition_table: HashMap<BoardState,i32> = HashMap::new();
+
+    // Create a mutable string to store the user's input
+    let mut player_result = String::new();
+
+    // Print a prompt to the user
+    println!("Do you want to be X or O? (Enter X or O)");
+    // Read user input and store it in the 'input' string
+    io::stdin().read_line(&mut player_result).expect("Failed to read line");
+
+    let trimmed_player_input = player_result.trim();
+
+    let mut previous_player = 'X';
+    let mut player = 'O';
+    if let Some(first_char) = trimmed_player_input.chars().next() {
+        if first_char == 'O' {
+            previous_player = 'O';
+            player = 'X';
+            game_board[0][0] = 'X';
+        } else if first_char != 'X' {
+            error("Please select a valid player choice. (X or O)");
+        }
+    } else {
+        error("Please select a valid player choice. (X or O)");
+    }
+
+    // Create a mutable string to store the user's input
+    let mut difficulty_result = String::new();
+
+    // Print a prompt to the user
+    println!("Please enter you desired difficulty (0 - 10) P.S. 10 may run slowly for the first couple moves.");
+    // Read user input and store it in the 'input' string
+    io::stdin().read_line(&mut difficulty_result).expect("Failed to read line");
+
+    let trimmed_input = difficulty_result.trim();
+    
+    let difficulty:usize = match trimmed_input.parse() {
+        Ok(n) => n,
+        Err(e) => {
+            eprintln!("{}",e);
+            error("Invalid input for difficulty.");
+        }
+    };
+
+    // let previous_player = 'X';
+    // let player = 'O';
+    let mut iterative_depth = 0;
     print_board(game_board.clone());
     while !is_complete(game_board.clone()) {
         // Create a mutable string to store the user's input
@@ -73,48 +121,72 @@ fn main() {
         // Ensure we have exactly two words
         if words.len() != 2 {
             println!("Please enter exactly two numbers separated by a space.");
-            return;
+            continue;
         }
 
         // Parse the words into usize variables
         let num1: usize = match words[0].parse() {
             Ok(n) => n,
             Err(_) => {
-                error("Invalid input for the first number.");
+                println!("Invalid input for the first number.");
+                continue;
             }
         };
 
         let num2: usize = match words[1].parse() {
             Ok(n) => n,
             Err(_) => {
-                error("Invalid input for the second number.");
+                println!("Invalid input for the second number.");
+                continue;
             }
         };
 
         if num1 >= 4 || num2 >= 4 {
-            error("Please use numbers 0-3");
+            println!("Please use numbers 0-3");
+            continue;
         }
 
         if game_board[num1][num2] == '.'{
-            game_board[num1][num2] = 'X';
+            if player == 'O' {
+                game_board[num1][num2] = 'X';
+            } else {
+                game_board[num1][num2] = 'O';
+            }
         } else {
-            error("Please only play on empty spaces.");
+            println!("Please only play on empty spaces");
+            continue;
         }
 
-        // Negamax of depth4
-        game_board = take_step(game_board.clone(), player, previous_player, 10);
+        if difficulty <= 4 {
+            game_board = take_step(game_board.clone(), player, previous_player, difficulty + iterative_depth, &mut transpoition_table);
+        } else if difficulty < 8 {
+            game_board = take_step(game_board.clone(), player, previous_player, difficulty - 4 + iterative_depth, &mut transpoition_table);
+            iterative_depth += 1;
+        } else {
+            game_board = take_step(game_board.clone(), player, previous_player, difficulty + 10 + iterative_depth, &mut transpoition_table);
+            iterative_depth += 2;
+        }
 
         print_board(game_board.clone());
     }
-    let result = evaluate_board(game_board.clone(), 'X');
-    println!("Your result: {}", result);
+    if player == 'X' {
+        let result = evaluate_board(game_board.clone(), 'O');
+        println!("Your result: {}", result);
+    } else {
+        let result = evaluate_board(game_board.clone(), 'X');
+        println!("Your result: {}", result);
+    }
+}
+
+fn order_moves(board: Vec<Vec<char>>, player: char, previous_player: char, ){
+
 }
 
 // Recurse board using negamax of depth+1, then evaluate next move.
-fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize) -> Vec<Vec<char>> {
+fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, transposition_table:&mut HashMap<BoardState,i32>) -> Vec<Vec<char>> {
     //let new_board: Vec<Vec<char>> = Vec::new();
     let mut result:i32;
-    let mut result2:i32 = i32::MIN;
+    let mut result1:i32 = i32::MIN;
     let mut r_board:Vec<Vec<char>> = board.clone();
     for r in 0..4 {
         for c in 0..4 {
@@ -122,14 +194,14 @@ fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: 
             if board[r][c] == '.' {
                 let mut new_board = board.clone();
                 new_board[r][c] = player;
-                //print_board(new_board.clone());
                 if previous_player == 'X' {
-                    result = recurse_board(new_board.clone(), player, 'O', depth, 4, -4);
+                    result = recurse_board(new_board.clone(), player, 'O', depth, i32::MIN+1, i32::MAX, transposition_table);
                 } else {
-                    result = recurse_board(new_board.clone(), player, 'X', depth, 4, -4);
+                    result = recurse_board(new_board.clone(), player, 'X', depth, i32::MIN+1, i32::MAX, transposition_table);
                 }
-                if result > result2 {
-                    result2 = result;
+                // println!("{}  {}{}",result,r,c);
+                if result > result1 {
+                    result1 = result;
                     r_board = new_board.clone();
                 }
             }
@@ -149,39 +221,11 @@ fn is_complete(board: Vec<Vec<char>>) -> bool {
     true
 }
 
-fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, beta:i32) -> i32 {
-    // let mut result1:i32;
-    // let mut result2 = i32::MIN;
-    // let mut finished = true;
-    // if depth != 0 {
-    //     for r in 0..4 {
-    //         for c in 0..4 {
-    //             // Empty spot, add it to possible moves
-    //             if board[r][c] == '.' {
-    //                 finished = false;
-    //                 let mut new_board = board.clone();
-    //                 new_board[r][c] = previous_player;
-    //                 //print_board(new_board.clone());
-    //                 if previous_player == 'X' {
-    //                     result1 = recurse_board(new_board, player, 'O', depth-1);
-    //                 } else {
-    //                     result1 = recurse_board(new_board, player, 'X', depth-1);
-    //                 }
-    //                 if result1 > result2 {
-    //                     result2 = result1;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    // if finished || depth == 0 {
-    //     return evaluate_board(board.clone(),player);
-    // }
-    // result2
-
+fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, mut beta:i32, transposition_table:&mut HashMap<BoardState,i32>) -> i32 {
     // Alpha beta
-    let mut result2 = i32::MIN;
+    let mut result2 = i32::MIN+1;
     let mut finished = true;
+    let mut result1 = 0;
 
     if depth != 0 {
         for r in 0..4 {
@@ -191,27 +235,36 @@ fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, dep
                     let mut new_board = board.clone();
                     new_board[r][c] = previous_player;
 
-                    let result1 = -recurse_board(
-                        new_board.clone(),
-                        player,
-                        if previous_player == 'X' { 'O' } else { 'X' },
-                        depth - 1,
-                        -beta,
-                        -alpha,
-                    );
+                    if let Some(score) = transposition_table.get(&BoardState(new_board.clone())) {
+                        result1= *score;
+                    } else {
+                        result1 = -recurse_board(
+                            new_board.clone(),
+                            player,
+                            if previous_player == 'X' { 'O' } else { 'X' },
+                            depth - 1,
+                            -beta,
+                            -alpha,
+                            transposition_table
+                        );
+                        //transposition_table.insert(BoardState(new_board.clone()),result1);
+                    }
 
                     result2 = result2.max(result1);
                     alpha = alpha.max(result1);
+                    beta = beta.min(result1);
 
                     if alpha >= beta {
-                        //println!("pruned");
+                        // println!("pruned: {} {}", alpha, beta);
                         break;
                     }
                 }
             }
         }
     }
-
+    if !transposition_table.contains_key(&BoardState(board.clone())) {
+        transposition_table.insert(BoardState(board.clone()),result2);
+    }
     if finished || depth == 0 {
         return evaluate_board(board, player);
     }
