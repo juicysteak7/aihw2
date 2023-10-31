@@ -57,7 +57,7 @@ fn main() {
     // let result = recurse_board(game_board.clone(), player, previous_player,4);
     // println!("{} {}",player, result);
     let mut game_board = vec![vec!['.'; 4]; 4];
-    //let mut transpoition_table: HashMap<BoardState,i32> = HashMap::new();
+    let mut transpoition_table: HashMap<BoardState,i32> = HashMap::new();
 
     // Create a mutable string to store the user's input
     let mut player_result = String::new();
@@ -158,13 +158,13 @@ fn main() {
         }
 
         if difficulty <= 4 {
-            game_board = take_step(game_board.clone(), player, previous_player, 2 + iterative_depth);
+            game_board = take_step(game_board.clone(), player, previous_player, 2 + iterative_depth, &mut transpoition_table);
         } else if difficulty < 8 {
-            game_board = take_step(game_board.clone(), player, previous_player, 3  + iterative_depth);
+            game_board = take_step(game_board.clone(), player, previous_player, difficulty  + iterative_depth, &mut transpoition_table);
             iterative_depth += 1;
         } else {
-            game_board = take_step(game_board.clone(), player, previous_player, 4 + iterative_depth);
-            iterative_depth += 2;
+            game_board = take_step(game_board.clone(), player, previous_player, 20 + iterative_depth, &mut transpoition_table);
+            iterative_depth += 1;
         }
 
         print_board(game_board.clone());
@@ -178,20 +178,14 @@ fn main() {
     }
 }
 
-fn order_moves(board: Vec<Vec<char>>, player: char, previous_player: char) -> Vec<Vec<Vec<char>>>{
+fn order_moves(board: Vec<Vec<char>>, player: char, previous_player: char,transpoition_table:&mut HashMap<BoardState,i32>) -> Vec<Vec<Vec<char>>>{
     let mut ord_moves:Vec<Vec<Vec<char>>> = Vec::new();
-    let mut new_prev = previous_player;
-    if new_prev == 'X' {
-        new_prev = 'O';
-    } else {
-        new_prev = 'X';
-    }
 
     for r in 0..4 {
         for c in 0..4 {
             if board[r][c] == '.' {
                 let mut new_board = board.clone();
-                new_board[r][c] = previous_player;
+                new_board[r][c] = player;
                 ord_moves.push(new_board);
             }
         }
@@ -199,8 +193,8 @@ fn order_moves(board: Vec<Vec<char>>, player: char, previous_player: char) -> Ve
 
     // Sort the moves based on the heuristic evaluation
     ord_moves.sort_by(|a, b| {
-        let score_a = shallow_recurse_board(a.clone(), player, new_prev, 1);
-        let score_b = shallow_recurse_board(b.clone(), player, new_prev, 1);
+        let score_a = shallow_recurse_board(a.clone(), player, previous_player, 2,transpoition_table);
+        let score_b = shallow_recurse_board(b.clone(), player, previous_player, 2,transpoition_table);
         score_b.cmp(&score_a) // Reverse order to sort in descending order
     });
 
@@ -211,31 +205,36 @@ fn order_moves(board: Vec<Vec<char>>, player: char, previous_player: char) -> Ve
 
 
 // Recurse board using negamax of depth+1, then evaluate next move.
-fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize/*, transposition_table:&mut HashMap<BoardState,i32>*/) -> Vec<Vec<char>> {
+fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, transposition_table:&mut HashMap<BoardState,i32>) -> Vec<Vec<char>> {
     //let new_board: Vec<Vec<char>> = Vec::new();
     let mut result:i32;
     let mut result1:i32 = i32::MIN;
     let mut r_board:Vec<Vec<char>> = board.clone();
-    for r in 0..4 {
-        for c in 0..4 {
+
+    for mov in order_moves(board.clone(),player,previous_player,transposition_table) {
+
+    //for r in 0..4 {
+        //for c in 0..4 {
             // Empty spot, add it to possible moves
-            if board[r][c] == '.' {
-                let mut new_board = board.clone();
-                new_board[r][c] = player;
+            //if board[r][c] == '.' {
+                //let mut new_board = board.clone();
+                //new_board[r][c] = player;
 
                 // Alpha = lower bound, Beta = Upper bound
                 if previous_player == 'X' {
-                    result = recurse_board(new_board.clone(), player, 'O', depth, 0, 4);
+                    result = recurse_board(mov.clone(), player, 'O', depth, i32::MIN+1, i32::MAX, transposition_table);
                 } else {
-                    result = recurse_board(new_board.clone(), player, 'X', depth, i32::MIN+1, i32::MAX);
+                    result = recurse_board(mov.clone(), player, 'X', depth, i32::MIN+1, i32::MAX, transposition_table);
                 }
                 // println!("{}  {}{}",result,r,c);
                 if result > result1 {
                     result1 = result;
-                    r_board = new_board.clone();
+                    r_board = mov.clone();
                 }
-            }
-        }
+            //}
+        //}
+    //}
+
     }
     println!("{}",result1);
     r_board
@@ -252,7 +251,7 @@ fn is_complete(board: Vec<Vec<char>>) -> bool {
     true
 }
 
-fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize) -> i32 {
+fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, transpoition_table:&mut HashMap<BoardState,i32>) -> i32 {
     // Alpha beta
     let mut result2 = i32::MIN+1;
     let mut finished = true;
@@ -266,12 +265,24 @@ fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: c
                     let mut new_board = board.clone();
                     new_board[r][c] = previous_player;
 
-                    result1 = shallow_recurse_board(
-                        new_board.clone(),
-                        player,
-                        if previous_player == 'X' { 'O' } else { 'X' },
-                        depth - 1,
-                    );
+                    if let Some(score) = transpoition_table.get(&BoardState(new_board.clone())) {
+                        result1 = *score;
+                    } else {
+                        result1 = shallow_recurse_board(
+                            new_board.clone(),
+                            player,
+                            if previous_player == 'X' { 'O' } else { 'X' },
+                            depth - 1,
+                            transpoition_table
+                        );
+                    }
+
+                    // result1 = shallow_recurse_board(
+                    //     new_board.clone(),
+                    //     player,
+                    //     if previous_player == 'X' { 'O' } else { 'X' },
+                    //     depth - 1,
+                    // );
 
                     result2 = result2.max(result1);
                 }
@@ -285,82 +296,86 @@ fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: c
     result2
 }
 
-fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, mut beta:i32/*, transposition_table:&mut HashMap<BoardState,i32>*/) -> i32 {
+fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, mut beta:i32, transposition_table:&mut HashMap<BoardState,i32>) -> i32 {
     // Alpha beta
     let mut result2 = i32::MIN+1;
     let mut finished = true;
     let mut result1 = 0;
 
-    if depth != 0 {
-        for mov in order_moves(board.clone(), player, previous_player) {
-            finished = false;
-            result1 = -recurse_board(
-                mov.clone(),
-                player,
-                if previous_player == 'X' { 'O' } else { 'X' },
-                depth - 1,
-                -beta,
-                -alpha,
-            );
-
-            result2 = result2.max(result1);
-            alpha = alpha.max(result1);
-
-            if alpha >= beta {
-                // println!("pruned: {} {}", alpha, beta);
-                break;
-            }
-        }
-    }
-
-    if depth == 0 || finished == true {
-        return evaluate_board(board,player);
-    }
-    result2
-
     // if depth != 0 {
-    //     for r in 0..4 {
-    //         for c in 0..4 {
-    //             if board[r][c] == '.' {
-    //                 finished = false;
-    //                 let mut new_board = board.clone();
-    //                 new_board[r][c] = previous_player;
+    //     for mov in order_moves(board.clone(), player, previous_player) {
+    //         finished = false;
+    //         result1 = -recurse_board(
+    //             mov.clone(),
+    //             player,
+    //             if previous_player == 'X' { 'O' } else { 'X' },
+    //             depth - 1,
+    //             -beta,
+    //             -alpha,
+    //         );
 
-    //                 if let Some(score) = transposition_table.get(&BoardState(new_board.clone())) {
-    //                     result1= *score;
-    //                 } else {
-    //                     result1 = -recurse_board(
-    //                         new_board.clone(),
-    //                         player,
-    //                         if previous_player == 'X' { 'O' } else { 'X' },
-    //                         depth - 1,
-    //                         -beta,
-    //                         -alpha,
-    //                         transposition_table
-    //                     );
-    //                     //transposition_table.insert(BoardState(new_board.clone()),result1);
-    //                 }
+    //         result2 = result2.max(result1);
+    //         alpha = alpha.max(result1);
 
-    //                 result2 = result2.max(result1);
-    //                 alpha = alpha.max(result1);
-    //                 beta = beta.min(result1);
-
-    //                 if alpha >= beta {
-    //                     // println!("pruned: {} {}", alpha, beta);
-    //                     break;
-    //                 }
-    //             }
+    //         if alpha >= beta {
+    //             // println!("pruned: {} {}", alpha, beta);
+    //             break;
     //         }
     //     }
     // }
-    // if !transposition_table.contains_key(&BoardState(board.clone())) {
-    //     transposition_table.insert(BoardState(board.clone()),result2);
-    // }
-    // if finished || depth == 0 {
-    //     return evaluate_board(board, player);
-    // }
 
+    // if depth == 0 || finished == true {
+    //     return evaluate_board(board,player);
+    // }
     // result2
+
+    if depth != 0 {
+        for r in 0..4 {
+            for c in 0..4 {
+                if board[r][c] == '.' {
+                    finished = false;
+                    let mut new_board = board.clone();
+                    new_board[r][c] = previous_player;
+
+                    if let Some(score) = transposition_table.get(&BoardState(new_board.clone())) {
+                        result1= *score;
+                    } else {
+                        result1 = -recurse_board(
+                            new_board.clone(),
+                            player,
+                            if previous_player == 'X' { 'O' } else { 'X' },
+                            depth - 1,
+                            -beta,
+                            -alpha,
+                            transposition_table
+                        );
+                        transposition_table.insert(BoardState(new_board.clone()),result1);
+                    }
+
+                    result2 = result2.max(result1);
+                    alpha = alpha.max(result1);
+
+                    if alpha >= beta {
+                        // println!("pruned: {} {}", alpha, beta);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    // if !transposition_table.contains_key(&BoardState(board.clone())) {
+    //     // if result2 == i32::MIN+1 || result2 == i32::MAX {
+    //     //     transposition_table.insert(BoardState(board.clone()),result1);
+    //     // } else {
+    //     //     transposition_table.insert(BoardState(board.clone()),result2);
+    //     // }
+    //         transposition_table.insert(BoardState(board.clone()),result2);
+    // }
+    if finished || depth == 0 {
+        return evaluate_board(board, player);
+    }
+
+    result2
 }
 
 fn read_board(filename: &str) -> io::Result<Vec<Vec<char>>> {
