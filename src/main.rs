@@ -7,174 +7,177 @@ use std::env;
 struct BoardState(Vec<Vec<char>>);
 
 fn main() {
-    // let args: Vec<String> = env::args().collect();
-    // if args.len() != 2 {
-    //     eprintln!("Please only use one argument of the bugrush board's file name.");
-    //     std::process::exit(1);
-    // }
-    // let file_name: &str = &args[1];
+    let args: Vec<String> = env::args().collect();
+    let mut transposition_table: HashMap<BoardState,i32> = HashMap::new();
+    if args.len() == 2 {
+        let file_name: &str = &args[1];
 
-    // // Code to read a game board from a file
-    // let mut game_board: Vec<Vec<char>> = Vec::new();
-    // match read_board(file_name) {
-    //     Ok(result) => {
-    //         game_board = result;
-    //     }
-    //     Err(error) => {
-    //         eprintln!("{}", error);
-    //     }
-    // }
+        // Code to read a game board from a file
+        let mut game_board: Vec<Vec<char>> = Vec::new();
+        match read_board(file_name) {
+            Ok(result) => {
+                game_board = result;
+            }
+            Err(error) => {
+                eprintln!("{}", error);
+            }
+        }
 
-    // if game_board.len() != 4 {
-    //     error("Game board not imported correctly");
+        if game_board.len() != 4 {
+            error("Game board not imported correctly");
 
-    // } else if game_board[0].len() != 4 {
-    //         error("Game board not imported correctly");
-    // }
+        } else if game_board[0].len() != 4 {
+                error("Game board not imported correctly");
+        }
 
-    // // find whos turn it is
-    // let mut xcount = 0;
-    // let mut ocount = 0;
-    // let player;
-    // let previous_player;
-    // for r in 0..4 {
-    //     for c in 0..4 {
-    //         if game_board[r][c] == 'X' {
-    //             xcount += 1;
-    //         } else if game_board[r][c] == 'O' {
-    //             ocount += 1;
-    //         }
-    //     }
-    // }
-    // if xcount == ocount {
-    //     player = 'X';
-    //     previous_player = 'O';
-    // } else {
-    //     player = 'O';
-    //     previous_player = 'X';
-    // }
-    // // print_board(game_board.clone());
-    // let result = recurse_board(game_board.clone(), player, previous_player,4);
-    // println!("{} {}",player, result);
-    let mut game_board = vec![vec!['.'; 4]; 4];
-    let mut transpoition_table: HashMap<BoardState,i32> = HashMap::new();
-
-    // Create a mutable string to store the user's input
-    let mut player_result = String::new();
-
-    // Print a prompt to the user
-    println!("Do you want to be X or O? (Enter X or O)");
-    // Read user input and store it in the 'input' string
-    io::stdin().read_line(&mut player_result).expect("Failed to read line");
-
-    let trimmed_player_input = player_result.trim();
-
-    let mut previous_player = 'X';
-    let mut player = 'O';
-    if let Some(first_char) = trimmed_player_input.chars().next() {
-        if first_char == 'O' {
-            previous_player = 'O';
+        // find whos turn it is
+        let mut xcount = 0;
+        let mut ocount = 0;
+        let player;
+        let previous_player;
+        for r in 0..4 {
+            for c in 0..4 {
+                if game_board[r][c] == 'X' {
+                    xcount += 1;
+                } else if game_board[r][c] == 'O' {
+                    ocount += 1;
+                }
+            }
+        }
+        if xcount == ocount {
             player = 'X';
-            game_board[0][0] = 'X';
-        } else if first_char != 'X' {
-            error("Please select a valid player choice. (X or O)");
+            previous_player = 'O';
+        } else {
+            player = 'O';
+            previous_player = 'X';
         }
+        // print_board(game_board.clone());
+        let result = shallow_recurse_board(game_board.clone(), player, previous_player, 10, &mut transposition_table);
+        println!("{} {}",player, result);
     } else {
-        error("Please select a valid player choice. (X or O)");
-    }
 
-    // Create a mutable string to store the user's input
-    let mut difficulty_result = String::new();
 
-    // Print a prompt to the user
-    println!("Please enter you desired difficulty (0 - 10) P.S. 10 may run slowly for the first couple moves.");
-    // Read user input and store it in the 'input' string
-    io::stdin().read_line(&mut difficulty_result).expect("Failed to read line");
+        let mut game_board = vec![vec!['.'; 4]; 4];
 
-    let trimmed_input = difficulty_result.trim();
-    
-    let difficulty:usize = match trimmed_input.parse() {
-        Ok(n) => n,
-        Err(e) => {
-            eprintln!("{}",e);
-            error("Invalid input for difficulty.");
-        }
-    };
-
-    // let previous_player = 'X';
-    // let player = 'O';
-    let mut iterative_depth = 0;
-    print_board(game_board.clone());
-    while !is_complete(game_board.clone()) {
         // Create a mutable string to store the user's input
-        let mut input = String::new();
+        let mut player_result = String::new();
 
         // Print a prompt to the user
-        println!("Please enter your move (Example: 3 2)");
-
+        println!("Do you want to be X or O? (Enter X or O)");
         // Read user input and store it in the 'input' string
-        io::stdin().read_line(&mut input).expect("Failed to read line");
+        io::stdin().read_line(&mut player_result).expect("Failed to read line");
 
-        // Split the input into words and collect them into a Vec
-        let words: Vec<&str> = input.split_whitespace().collect();
+        let trimmed_player_input = player_result.trim();
 
-        // Ensure we have exactly two words
-        if words.len() != 2 {
-            println!("Please enter exactly two numbers separated by a space.");
-            continue;
+        let mut previous_player = 'X';
+        let mut player = 'O';
+        if let Some(first_char) = trimmed_player_input.chars().next() {
+            if first_char == 'O' {
+                previous_player = 'O';
+                player = 'X';
+                game_board[0][0] = 'X';
+            } else if first_char != 'X' {
+                error("Please select a valid player choice. (X or O)");
+            }
+        } else {
+            error("Please select a valid player choice. (X or O)");
         }
 
-        // Parse the words into usize variables
-        let num1: usize = match words[0].parse() {
+        // Create a mutable string to store the user's input
+        let mut difficulty_result = String::new();
+
+        // Print a prompt to the user
+        println!("Please enter you desired difficulty (0 - 10) P.S. 10 may run slowly for the first couple moves.");
+        // Read user input and store it in the 'input' string
+        io::stdin().read_line(&mut difficulty_result).expect("Failed to read line");
+
+        let trimmed_input = difficulty_result.trim();
+        
+        let difficulty:usize = match trimmed_input.parse() {
             Ok(n) => n,
-            Err(_) => {
-                println!("Invalid input for the first number.");
-                continue;
+            Err(e) => {
+                eprintln!("{}",e);
+                error("Invalid input for difficulty.");
             }
         };
 
-        let num2: usize = match words[1].parse() {
-            Ok(n) => n,
-            Err(_) => {
-                println!("Invalid input for the second number.");
-                continue;
-            }
-        };
-
-        if num1 >= 4 || num2 >= 4 {
-            println!("Please use numbers 0-3");
-            continue;
-        }
-
-        if game_board[num1][num2] == '.'{
-            if player == 'O' {
-                game_board[num1][num2] = 'X';
-            } else {
-                game_board[num1][num2] = 'O';
-            }
-        } else {
-            println!("Please only play on empty spaces");
-            continue;
-        }
-
-        if difficulty <= 4 {
-            game_board = take_step(game_board.clone(), player, previous_player, 2 + iterative_depth, &mut transpoition_table);
-        } else if difficulty < 8 {
-            game_board = take_step(game_board.clone(), player, previous_player, difficulty  + iterative_depth, &mut transpoition_table);
-            iterative_depth += 1;
-        } else {
-            game_board = take_step(game_board.clone(), player, previous_player, 20 + iterative_depth, &mut transpoition_table);
-            iterative_depth += 1;
-        }
-
+        // let previous_player = 'X';
+        // let player = 'O';
+        let mut iterative_depth = 0;
         print_board(game_board.clone());
-    }
-    if player == 'X' {
-        let result = evaluate_board(game_board.clone(), 'O');
-        println!("Your result: {}", result);
-    } else {
-        let result = evaluate_board(game_board.clone(), 'X');
-        println!("Your result: {}", result);
+        while !is_complete(game_board.clone()) {
+            // Create a mutable string to store the user's input
+            let mut input = String::new();
+
+            // Print a prompt to the user
+            println!("Please enter your move (Example: 3 2)");
+
+            // Read user input and store it in the 'input' string
+            io::stdin().read_line(&mut input).expect("Failed to read line");
+
+            // Split the input into words and collect them into a Vec
+            let words: Vec<&str> = input.split_whitespace().collect();
+
+            // Ensure we have exactly two words
+            if words.len() != 2 {
+                println!("Please enter exactly two numbers separated by a space.");
+                continue;
+            }
+
+            // Parse the words into usize variables
+            let num1: usize = match words[0].parse() {
+                Ok(n) => n,
+                Err(_) => {
+                    println!("Invalid input for the first number.");
+                    continue;
+                }
+            };
+
+            let num2: usize = match words[1].parse() {
+                Ok(n) => n,
+                Err(_) => {
+                    println!("Invalid input for the second number.");
+                    continue;
+                }
+            };
+
+            if num1 >= 4 || num2 >= 4 {
+                println!("Please use numbers 0-3");
+                continue;
+            }
+
+            if game_board[num1][num2] == '.'{
+                if player == 'O' {
+                    game_board[num1][num2] = 'X';
+                } else {
+                    game_board[num1][num2] = 'O';
+                }
+            } else {
+                println!("Please only play on empty spaces");
+                continue;
+            }
+
+            if difficulty <= 4 {
+                game_board = take_step(game_board.clone(), player, previous_player, 2 + iterative_depth, &mut transposition_table);
+            } else if difficulty < 8 {
+                game_board = take_step(game_board.clone(), player, previous_player, difficulty  + iterative_depth, &mut transposition_table);
+                iterative_depth += 1;
+            } else {
+                game_board = take_step(game_board.clone(), player, previous_player, 20 + iterative_depth, &mut transposition_table);
+                iterative_depth += 1;
+            }
+
+            print_board(game_board.clone());
+        }
+        if player == 'X' {
+            let result = evaluate_board(game_board.clone(), 'O');
+            println!("Your result: {}", result);
+        } else {
+            let result = evaluate_board(game_board.clone(), 'X');
+            println!("Your result: {}", result);
+        }
+
+
     }
 }
 
