@@ -105,25 +105,25 @@ In addition, your program should solve other instances we might try during gradi
 
 ## Extra Credit
 
-    10 points: add a "player" program that allows a human to play Fourtic as X against your program. This will require depth-limited search (at least near the start of the game) to play at reasonable speed. Use a depth 4 search.
+10 points: add a "player" program that allows a human to play Fourtic as X against your program. This will require depth-limited search (at least near the start of the game) to play at reasonable speed. Use a depth 4 search.
 
-    Show a game trace from a human game in your README.
+Show a game trace from a human game in your README.
 
-    20 points: add αβ (alpha-beta) pruning to your search, as well as some move-ordering heuristic.
+20 points: add αβ (alpha-beta) pruning to your search, as well as some move-ordering heuristic.
 
-    Report on the performance improvement from αβ in your README.
+Report on the performance improvement from αβ in your README.
 
-    Solve Fourtic. Choose one of these:
+Solve Fourtic. Choose one of these:
 
-        40 points: Weakly solve Fourtic by good alpha-beta search from the starting position.
+    40 points: Weakly solve Fourtic by good alpha-beta search from the starting position.
 
-        Your program should produce a table giving the best move for every main line Fourtic position. A main line position is a position encountered in your search.
+    Your program should produce a table giving the best move for every main line Fourtic position. A main line position is a position encountered in your search.
 
-        50 points: Strongly solve Fourtic by complete Retrograde Analysis 
+    50 points: Strongly solve Fourtic by complete Retrograde Analysis 
 
-    Links to an external site. from all possible ending positions.
+Links to an external site. from all possible ending positions.
 
-    Your program should produce a table giving the best move for every Fourtic position .
+Your program should produce a table giving the best move for every Fourtic position .
 
 Include a link to a solution table stored somewhere online (probably Github) in your submission. Compress the table so that it is reasonably sized. Report the value of Fourtic in your README.
 
