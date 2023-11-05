@@ -216,27 +216,16 @@ fn take_step(board: Vec<Vec<char>>, player: char, previous_player: char, depth: 
 
     for mov in order_moves(board.clone(),player,previous_player,transposition_table) {
 
-    //for r in 0..4 {
-        //for c in 0..4 {
-            // Empty spot, add it to possible moves
-            //if board[r][c] == '.' {
-                //let mut new_board = board.clone();
-                //new_board[r][c] = player;
-
-                // Alpha = lower bound, Beta = Upper bound
-                if previous_player == 'X' {
-                    result = recurse_board(mov.clone(), player, 'O', depth, i32::MIN+1, i32::MAX, transposition_table);
-                } else {
-                    result = recurse_board(mov.clone(), player, 'X', depth, i32::MIN+1, i32::MAX, transposition_table);
-                }
-                // println!("{}  {}{}",result,r,c);
-                if result > result1 {
-                    result1 = result;
-                    r_board = mov.clone();
-                }
-            //}
-        //}
-    //}
+        if previous_player == 'X' {
+            result = recurse_board(mov.clone(), player, 'O', depth, i32::MIN+1, i32::MAX, transposition_table);
+        } else {
+            result = recurse_board(mov.clone(), player, 'X', depth, i32::MIN+1, i32::MAX, transposition_table);
+        }
+        // println!("{}  {}{}",result,r,c);
+        if result > result1 {
+            result1 = result;
+            r_board = mov.clone();
+        }
 
     }
     println!("{}",result1);
@@ -280,13 +269,6 @@ fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: c
                         );
                     }
 
-                    // result1 = shallow_recurse_board(
-                    //     new_board.clone(),
-                    //     player,
-                    //     if previous_player == 'X' { 'O' } else { 'X' },
-                    //     depth - 1,
-                    // );
-
                     result2 = result2.max(result1);
                 }
             }
@@ -304,33 +286,6 @@ fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, dep
     let mut result2 = i32::MIN+1;
     let mut finished = true;
     let mut result1 = 0;
-
-    // if depth != 0 {
-    //     for mov in order_moves(board.clone(), player, previous_player) {
-    //         finished = false;
-    //         result1 = -recurse_board(
-    //             mov.clone(),
-    //             player,
-    //             if previous_player == 'X' { 'O' } else { 'X' },
-    //             depth - 1,
-    //             -beta,
-    //             -alpha,
-    //         );
-
-    //         result2 = result2.max(result1);
-    //         alpha = alpha.max(result1);
-
-    //         if alpha >= beta {
-    //             // println!("pruned: {} {}", alpha, beta);
-    //             break;
-    //         }
-    //     }
-    // }
-
-    // if depth == 0 || finished == true {
-    //     return evaluate_board(board,player);
-    // }
-    // result2
 
     if depth != 0 {
         for r in 0..4 {
@@ -359,21 +314,12 @@ fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, dep
                     alpha = alpha.max(result1);
 
                     if alpha >= beta {
-                        // println!("pruned: {} {}", alpha, beta);
                         break;
                     }
                 }
             }
         }
     }
-    // if !transposition_table.contains_key(&BoardState(board.clone())) {
-    //     // if result2 == i32::MIN+1 || result2 == i32::MAX {
-    //     //     transposition_table.insert(BoardState(board.clone()),result1);
-    //     // } else {
-    //     //     transposition_table.insert(BoardState(board.clone()),result2);
-    //     // }
-    //         transposition_table.insert(BoardState(board.clone()),result2);
-    // }
     if finished || depth == 0 {
         return evaluate_board(board, player);
     }
