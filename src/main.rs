@@ -247,7 +247,7 @@ fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: c
     // Alpha beta
     let mut result2 = i32::MIN+1;
     let mut finished = true;
-    let mut result1 = 0;
+    let mut result1:i32;
 
     if depth != 0 {
         for r in 0..4 {
@@ -281,11 +281,11 @@ fn shallow_recurse_board(board: Vec<Vec<char>>, player: char, previous_player: c
     result2
 }
 
-fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, mut beta:i32, transposition_table:&mut HashMap<BoardState,i32>) -> i32 {
+fn recurse_board(board: Vec<Vec<char>>, player: char, previous_player: char, depth: usize, mut alpha: i32, beta:i32, transposition_table:&mut HashMap<BoardState,i32>) -> i32 {
     // Alpha beta
     let mut result2 = i32::MIN+1;
     let mut finished = true;
-    let mut result1 = 0;
+    let mut result1:i32;
 
     if depth != 0 {
         for r in 0..4 {
